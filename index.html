@@ -101,7 +101,7 @@
     .ready-top p {
       font-size: 15px;
       color: var(--c-dim);
-      line-height: 1.55;
+      line-height: 1.2;
     }
 
     .ready-bottom {
@@ -196,12 +196,6 @@
       color: var(--c-hang);
     }
 
-    #hang-hint {
-      font-size: 13px;
-      color: var(--c-muted);
-      letter-spacing: 0.03em;
-    }
-
     #btn-stop {
       flex: 1;
       background: linear-gradient(180deg, #ffffff 0%, #fff6f6 100%);
@@ -213,7 +207,7 @@
       justify-content: center;
       gap: 8px;
       cursor: pointer;
-      padding-bottom: var(--safe-b);
+      padding: 20px 24px var(--safe-b);
       box-shadow: var(--shadow-md), var(--inset-hi);
       transition: background 0.12s, border-color 0.12s, transform 0.08s;
     }
@@ -235,14 +229,30 @@
       font-size: 13px;
       color: rgba(220,38,38,0.45);
       letter-spacing: 0.02em;
+      text-align: center;
+      max-width: 260px;
+      line-height: 1.4;
     }
 
     /* ─── RESULT ──────────────────────────────────────── */
     #screen-result {
       flex-direction: column;
-      padding: 28px 20px max(28px, var(--safe-b));
-      gap: 12px;
+    }
+
+    .result-content {
+      flex: 1;
       overflow-y: auto;
+      padding: 28px 20px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .result-footer {
+      padding: 12px 20px max(24px, var(--safe-b));
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
     .result-header {
@@ -324,18 +334,6 @@
       background: rgba(37,99,235,0.03);
     }
     #reaction-input::placeholder { color: var(--c-muted); }
-
-    .r-unit {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--c-dim);
-    }
-
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
 
     .btn-primary {
       width: 100%;
@@ -434,50 +432,51 @@
   <div id="screen-hang" class="screen">
     <div class="glass-card hang-header">
       <span class="tag">Hanging</span>
-      <div id="hang-display">00.00</div>
-      <div id="hang-hint">Tap below when you drop</div>
+      <div id="hang-display">00.0</div>
     </div>
     <button id="btn-stop" onclick="stopTimer()">
       <div class="stop-label">Stop</div>
-      <div class="stop-sub">Tap once you've dropped</div>
+      <div class="stop-sub">Remember to count after letting go from the bar, tap once you've dropped.</div>
     </button>
   </div>
 
   <!-- ─── RESULT ───────────────────────────────────────── -->
   <div id="screen-result" class="screen">
-    <div class="result-header"><span class="tag">Result</span></div>
+    <div class="result-content">
+      <div class="result-header"><span class="tag">Result</span></div>
 
-    <div class="glass-card times-card">
-      <div class="time-row">
-        <span class="t-label">Raw time</span>
-        <span id="t-raw" class="t-val raw">—</span>
+      <div class="glass-card times-card">
+        <div class="time-row">
+          <span class="t-label">Raw time</span>
+          <span id="t-raw" class="t-val raw">—</span>
+        </div>
+        <div class="time-row">
+          <span class="t-label">Reaction delay</span>
+          <span id="t-react" class="t-val react">—</span>
+        </div>
+        <div class="time-row">
+          <span class="t-label">Adjusted hang time</span>
+          <span id="t-adj" class="t-val adj">—</span>
+        </div>
       </div>
-      <div class="time-row">
-        <span class="t-label">Reaction delay</span>
-        <span id="t-react" class="t-val react">—</span>
+
+      <div class="glass-card reaction-card">
+        <div class="r-title">Reaction delay</div>
+        <div class="r-desc">After letting go, how long before you tapped stop? In seconds.</div>
+        <div class="input-row">
+          <input id="reaction-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="00" oninput="updateAdjusted()">
+        </div>
       </div>
-      <div class="time-row">
-        <span class="t-label">Adjusted hang time</span>
-        <span id="t-adj" class="t-val adj">—</span>
+
+      <div id="history-section-result" class="history-section">
+        <div class="history-title">Session history</div>
+        <div id="history-list"></div>
       </div>
     </div>
 
-    <div class="glass-card reaction-card">
-      <div class="r-title">Reaction delay</div>
-      <div class="r-desc">How long after dropping did you tap stop? Estimate in seconds.</div>
-      <div class="input-row">
-        <input id="reaction-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="00" oninput="updateAdjusted()">
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn-primary" onclick="saveAndReset()">Save &amp; go again</button>
-      <button class="btn-ghost" onclick="resetOnly()">Discard &amp; reset</button>
-    </div>
-
-    <div id="history-section-result" class="history-section">
-      <div class="history-title">Session history</div>
-      <div id="history-list"></div>
+    <div class="result-footer">
+      <button class="btn-primary" onclick="saveAndReset()">Save and go again</button>
+      <button class="btn-ghost" onclick="resetOnly()">Delete and reset</button>
     </div>
   </div>
 
@@ -509,10 +508,11 @@
       osc.stop(ctx.currentTime + dur);
     } catch(e) {}
   }
-  let rawMs        = 0;
-  let countTimer   = null;
-  let hangRAF      = null;
-  const history    = [];
+
+  let rawMs      = 0;
+  let countTimer = null;
+  let hangRAF    = null;
+  const history  = [];
 
   function getCountdownSecs() { return COUNTDOWN_OPTIONS[countdownIdx]; }
 
@@ -530,8 +530,59 @@
     return (Math.floor(seconds * 10) / 10).toFixed(1);
   }
 
+  function fmtResult(seconds) {
+    if (seconds >= 60) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor((seconds - m * 60) * 10) / 10;
+      return m + 'm ' + s.toFixed(1) + 's';
+    }
+    return fmt(seconds) + ' s';
+  }
+
+  function createFavicon() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+
+    // Rounded square background
+    const r = 13;
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(64 - r, 0);
+    ctx.arcTo(64, 0, 64, r, r);
+    ctx.lineTo(64, 64 - r);
+    ctx.arcTo(64, 64, 64 - r, 64, r);
+    ctx.lineTo(r, 64);
+    ctx.arcTo(0, 64, 0, 64 - r, r);
+    ctx.lineTo(0, r);
+    ctx.arcTo(0, 0, r, 0, r);
+    ctx.closePath();
+    ctx.fillStyle = '#111111';
+    ctx.fill();
+
+    // H shape — sharp corners, centered 44×52 within 64×64
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(10, 6, 10, 52);   // left bar
+    ctx.fillRect(44, 6, 10, 52);   // right bar
+    ctx.fillRect(10, 26, 44, 9);   // crossbar, ~38% from top
+
+    const dataURL = c.toDataURL('image/png');
+
+    // Standard favicon
+    let link = document.querySelector("link[rel='icon']") || document.createElement('link');
+    link.rel = 'icon';
+    link.type = 'image/png';
+    link.href = dataURL;
+    if (!link.parentNode) document.head.appendChild(link);
+
+    // Apple touch icon for Safari / iOS home screen
+    let apple = document.querySelector("link[rel='apple-touch-icon']") || document.createElement('link');
+    apple.rel = 'apple-touch-icon';
+    apple.href = dataURL;
+    if (!apple.parentNode) document.head.appendChild(apple);
+  }
+
   function startCountdown() {
-    getAudioCtx(); // initialise on user gesture so iOS allows audio
+    getAudioCtx(); // unlock iOS audio on user gesture
     show('screen-countdown');
     let remaining = getCountdownSecs();
     updateCountdownUI(remaining);
@@ -546,8 +597,8 @@
     document.getElementById('countdown-number').textContent = n;
     const msg = n > 6 ? 'Grab the bar…' : n > 3 ? 'Brace…' : 'Ready…';
     document.getElementById('countdown-msg').textContent = msg;
-    if (n === 3 || n === 2) beep(880,  0.12); // tick
-    if (n === 1)            beep(1320, 0.28); // final tone — higher, longer
+    if (n === 3 || n === 2) beep(880,  0.12);
+    if (n === 1)            beep(1320, 0.28);
   }
 
   function beginHang() {
@@ -569,7 +620,7 @@
     const rawSec = rawMs / 1000;
     document.getElementById('t-raw').textContent   = fmt(rawSec) + ' s';
     document.getElementById('t-react').textContent = '—';
-    document.getElementById('t-adj').textContent   = fmt(rawSec) + ' s';
+    document.getElementById('t-adj').textContent   = fmtResult(rawSec);
     document.getElementById('reaction-input').value = '';
 
     show('screen-result');
@@ -582,11 +633,11 @@
     const r    = parseFloat(rStr);
     if (isNaN(r) || rStr === '') {
       document.getElementById('t-react').textContent = '—';
-      document.getElementById('t-adj').textContent   = fmt(raw) + ' s';
+      document.getElementById('t-adj').textContent   = fmtResult(raw);
       return;
     }
     document.getElementById('t-react').textContent = r.toFixed(2) + ' s';
-    document.getElementById('t-adj').textContent   = fmt(Math.max(0, raw - r)) + ' s';
+    document.getElementById('t-adj').textContent   = fmtResult(Math.max(0, raw - r));
   }
 
   function saveAndReset() {
@@ -610,7 +661,7 @@
     el.innerHTML = history.slice(0,8).map((h,i) => `
       <div class="history-item">
         <span class="h-num">#${i+1}</span>
-        <span class="h-adj">${fmt(h.adjusted)} s</span>
+        <span class="h-adj">${fmtResult(h.adjusted)}</span>
         <span class="h-raw">raw ${fmt(h.raw)} s</span>
       </div>`).join('');
   }
@@ -623,10 +674,12 @@
     el.innerHTML = history.slice(0,5).map((h,i) => `
       <div class="history-item">
         <span class="h-num">#${i+1}</span>
-        <span class="h-adj">${fmt(h.adjusted)} s</span>
+        <span class="h-adj">${fmtResult(h.adjusted)}</span>
         <span class="h-raw">raw ${fmt(h.raw)} s</span>
       </div>`).join('');
   }
+
+  createFavicon();
 </script>
 </body>
 </html>

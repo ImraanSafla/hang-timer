@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Hang Timer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --c-bg:      #ecedf2;
+      --c-text:    #111111;
+      --c-dim:     #666666;
+      --c-muted:   #999999;
+      --c-divider: rgba(0,0,0,0.06);
+
+      --c-count:   #c27c0a;
+      --c-hang:    #16a34a;
+      --c-stop:    #dc2626;
+      --c-result:  #2563eb;
+      --c-primary: #111111;
+
+      --shadow-sm: 0 2px 10px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 6px 28px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+      --shadow-lg: 0 12px 48px rgba(0,0,0,0.1),  0 2px 8px rgba(0,0,0,0.06);
+      --inset-hi:  inset 0 1px 0 rgba(255,255,255,0.95);
+
+      --r-pill: 100px;
+      --r-card: 26px;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: radial-gradient(ellipse at 50% -5%, #ffffff 0%, #ecedf2 65%);
+      color: var(--c-text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      overscroll-behavior: none;
+    }
+
+    #app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      height: 100%;
+    }
+    .screen.active { display: flex; }
+
+    /* Glass card — light version */
+    .glass-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f7f7fc 100%);
+      border: 1px solid rgba(0,0,0,0.07);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow-md), var(--inset-hi);
+    }
+
+    /* Pill label */
+    .tag {
+      display: inline-block;
+      background: rgba(0,0,0,0.055);
+      color: var(--c-dim);
+      border-radius: var(--r-pill);
+      padding: 5px 15px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    /* ─── READY ──────────────────────────────────────── */
+    #screen-ready {
+      align-items: center;
+      justify-content: space-between;
+      padding: 72px 28px max(44px, var(--safe-b));
+    }
+
+    .ready-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .ready-top h1 {
+      font-size: 58px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      color: var(--c-text);
+    }
+
+    .ready-top p {
+      font-size: 15px;
+      color: var(--c-dim);
+      line-height: 1.55;
+    }
+
+    .ready-bottom {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Tappable countdown pill */
+    #countdown-pill {
+      width: 100%;
+      text-align: center;
+      background: linear-gradient(180deg, #ffffff 0%, #f0f0f6 100%);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: var(--r-pill);
+      padding: 22px;
+      font-size: 18px;
+      color: var(--c-dim);
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm), var(--inset-hi);
+      transition: opacity 0.12s, transform 0.1s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #countdown-pill strong {
+      color: var(--c-text);
+      font-weight: 700;
+    }
+    #countdown-pill:active { opacity: 0.65; transform: scale(0.98); }
+
+    #btn-start {
+      width: 100%;
+      padding: 22px;
+      border-radius: var(--r-pill);
+      border: none;
+      background: linear-gradient(180deg, #2a2a2a 0%, #000000 100%);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12);
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    #btn-start:active { opacity: 0.82; transform: scale(0.98); }
+
+    /* ─── COUNTDOWN ──────────────────────────────────── */
+    #screen-countdown {
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    #countdown-number {
+      font-size: clamp(140px, 46vw, 230px);
+      font-weight: 800;
+      letter-spacing: -0.06em;
+      line-height: 1;
+      color: var(--c-count);
+      margin: 22px 0 16px;
+    }
+
+    #countdown-msg {
+      font-size: 16px;
+      color: var(--c-muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── HANG ───────────────────────────────────────── */
+    #screen-hang {
+      flex-direction: column;
+      padding: 20px;
+      gap: 14px;
+    }
+
+    .hang-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 24px 32px;
+      gap: 14px;
+    }
+
+    #hang-display {
+      font-size: clamp(68px, 22vw, 100px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--c-hang);
+    }
+
+    #hang-hint {
+      font-size: 13px;
+      color: var(--c-muted);
+      letter-spacing: 0.03em;
+    }
+
+    #btn-stop {
+      flex: 1;
+      background: linear-gradient(180deg, #ffffff 0%, #fff6f6 100%);
+      border: 1.5px solid rgba(220,38,38,0.12);
+      border-radius: 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      padding-bottom: var(--safe-b);
+      box-shadow: var(--shadow-md), var(--inset-hi);
+      transition: background 0.12s, border-color 0.12s, transform 0.08s;
+    }
+    #btn-stop:active {
+      background: linear-gradient(180deg, #fff3f3 0%, #fee2e2 100%);
+      border-color: rgba(220,38,38,0.28);
+      transform: scale(0.992);
+    }
+
+    .stop-label {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-stop);
+    }
+
+    .stop-sub {
+      font-size: 13px;
+      color: rgba(220,38,38,0.45);
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── RESULT ──────────────────────────────────────── */
+    #screen-result {
+      flex-direction: column;
+      padding: 28px 20px max(28px, var(--safe-b));
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .times-card {
+      padding: 6px 20px;
+    }
+
+    .time-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 17px 0;
+      border-bottom: 1px solid var(--c-divider);
+    }
+    .time-row:last-child { border-bottom: none; }
+
+    .t-label {
+      font-size: 13px;
+      color: var(--c-dim);
+    }
+
+    .t-val {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .t-val.raw   { color: var(--c-text); }
+    .t-val.react { color: var(--c-count); }
+    .t-val.adj   { font-size: 36px; color: var(--c-result); }
+
+    .reaction-card {
+      padding: 18px 20px;
+    }
+
+    .r-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--c-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .r-desc {
+      font-size: 12px;
+      color: var(--c-muted);
+      line-height: 1.45;
+      margin-bottom: 14px;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #reaction-input {
+      flex: 1;
+      background: rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--c-text);
+      letter-spacing: -0.02em;
+      text-align: center;
+      outline: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    #reaction-input:focus {
+      border-color: rgba(37,99,235,0.35);
+      background: rgba(37,99,235,0.03);
+    }
+    #reaction-input::placeholder { color: var(--c-muted); }
+
+    .r-unit {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--c-dim);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 20px;
+      border-radius: var(--r-pill);
+      border: none;
+      background: linear-gradient(180deg, #2a2a2a 0%, #000000 100%);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.1);
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-primary:active { opacity: 0.82; transform: scale(0.98); }
+
+    .btn-ghost {
+      width: 100%;
+      padding: 18px;
+      border-radius: var(--r-pill);
+      border: 1px solid rgba(0,0,0,0.08);
+      background: linear-gradient(180deg, #ffffff 0%, #f0f0f6 100%);
+      color: var(--c-dim);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm), var(--inset-hi);
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-ghost:active { opacity: 0.65; transform: scale(0.98); }
+
+    /* History */
+    .history-section { display: none; }
+    .history-section.visible { display: block; }
+
+    .history-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+      margin-bottom: 10px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #f7f7fc 100%);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 14px;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow-sm), var(--inset-hi);
+    }
+
+    .h-num  { font-size: 12px; color: var(--c-muted); }
+    .h-adj  { font-size: 20px; font-weight: 700; color: var(--c-result); font-variant-numeric: tabular-nums; }
+    .h-raw  { font-size: 12px; color: var(--c-muted); text-align: right; }
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ─── READY ───────────────────────────────────────── -->
+  <div id="screen-ready" class="screen active">
+    <div class="ready-top">
+      <h1>Hang Time</h1>
+      <p>Measure your hang time with<br>reaction-delay correction.</p>
+    </div>
+
+    <div class="ready-bottom">
+      <div id="countdown-pill" onclick="cycleCountdown()">
+        Countdown <strong id="countdown-val">10 s</strong>
+      </div>
+      <button id="btn-start" onclick="startCountdown()">Start</button>
+      <div id="history-section-ready" class="history-section">
+        <div class="history-title">Recent sets</div>
+        <div id="history-list-ready"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── COUNTDOWN ───────────────────────────────────── -->
+  <div id="screen-countdown" class="screen">
+    <span class="tag">Get ready</span>
+    <div id="countdown-number">10</div>
+    <div id="countdown-msg">Grab the bar…</div>
+  </div>
+
+  <!-- ─── HANG ────────────────────────────────────────── -->
+  <div id="screen-hang" class="screen">
+    <div class="glass-card hang-header">
+      <span class="tag">Hanging</span>
+      <div id="hang-display">00.00</div>
+      <div id="hang-hint">Tap below when you drop</div>
+    </div>
+    <button id="btn-stop" onclick="stopTimer()">
+      <div class="stop-label">Stop</div>
+      <div class="stop-sub">Tap once you've dropped</div>
+    </button>
+  </div>
+
+  <!-- ─── RESULT ───────────────────────────────────────── -->
+  <div id="screen-result" class="screen">
+    <div class="result-header"><span class="tag">Result</span></div>
+
+    <div class="glass-card times-card">
+      <div class="time-row">
+        <span class="t-label">Raw time</span>
+        <span id="t-raw" class="t-val raw">—</span>
+      </div>
+      <div class="time-row">
+        <span class="t-label">Reaction delay</span>
+        <span id="t-react" class="t-val react">—</span>
+      </div>
+      <div class="time-row">
+        <span class="t-label">Adjusted hang time</span>
+        <span id="t-adj" class="t-val adj">—</span>
+      </div>
+    </div>
+
+    <div class="glass-card reaction-card">
+      <div class="r-title">Reaction delay</div>
+      <div class="r-desc">How long after dropping did you tap stop? Estimate in seconds.</div>
+      <div class="input-row">
+        <input id="reaction-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="00" oninput="updateAdjusted()">
+        <span class="r-unit">s</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" onclick="saveAndReset()">Save &amp; go again</button>
+      <button class="btn-ghost" onclick="resetOnly()">Discard &amp; reset</button>
+    </div>
+
+    <div id="history-section-result" class="history-section">
+      <div class="history-title">Session history</div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+  const COUNTDOWN_OPTIONS = [10, 5, 15];
+  let countdownIdx = 0;
+  let startTs      = 0;
+  let rawMs        = 0;
+  let countTimer   = null;
+  let hangRAF      = null;
+  const history    = [];
+
+  function getCountdownSecs() { return COUNTDOWN_OPTIONS[countdownIdx]; }
+
+  function cycleCountdown() {
+    countdownIdx = (countdownIdx + 1) % COUNTDOWN_OPTIONS.length;
+    document.getElementById('countdown-val').textContent = getCountdownSecs() + ' s';
+  }
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function fmt(seconds) {
+    return (Math.floor(seconds * 10) / 10).toFixed(1);
+  }
+
+  function startCountdown() {
+    show('screen-countdown');
+    let remaining = getCountdownSecs();
+    updateCountdownUI(remaining);
+    countTimer = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) { clearInterval(countTimer); beginHang(); }
+      else updateCountdownUI(remaining);
+    }, 1000);
+  }
+
+  function updateCountdownUI(n) {
+    document.getElementById('countdown-number').textContent = n;
+    const msg = n > 6 ? 'Grab the bar…' : n > 3 ? 'Brace…' : 'Ready…';
+    document.getElementById('countdown-msg').textContent = msg;
+  }
+
+  function beginHang() {
+    show('screen-hang');
+    startTs = performance.now();
+    function tick() {
+      document.getElementById('hang-display').textContent = fmt((performance.now() - startTs) / 1000);
+      hangRAF = requestAnimationFrame(tick);
+    }
+    hangRAF = requestAnimationFrame(tick);
+  }
+
+  function stopTimer() {
+    const stopTs = performance.now();
+    rawMs = stopTs - startTs;
+    cancelAnimationFrame(hangRAF);
+    hangRAF = null;
+
+    const rawSec = rawMs / 1000;
+    document.getElementById('t-raw').textContent   = fmt(rawSec) + ' s';
+    document.getElementById('t-react').textContent = '—';
+    document.getElementById('t-adj').textContent   = fmt(rawSec) + ' s';
+    document.getElementById('reaction-input').value = '';
+
+    show('screen-result');
+    setTimeout(() => document.getElementById('reaction-input').focus(), 300);
+  }
+
+  function updateAdjusted() {
+    const raw  = rawMs / 1000;
+    const rStr = document.getElementById('reaction-input').value.trim();
+    const r    = parseFloat(rStr);
+    if (isNaN(r) || rStr === '') {
+      document.getElementById('t-react').textContent = '—';
+      document.getElementById('t-adj').textContent   = fmt(raw) + ' s';
+      return;
+    }
+    document.getElementById('t-react').textContent = r.toFixed(2) + ' s';
+    document.getElementById('t-adj').textContent   = fmt(Math.max(0, raw - r)) + ' s';
+  }
+
+  function saveAndReset() {
+    const raw = rawMs / 1000;
+    const r   = parseFloat(document.getElementById('reaction-input').value.trim()) || 0;
+    history.unshift({ raw, reaction: r, adjusted: Math.max(0, raw - r) });
+    renderHistory();
+    resetOnly();
+  }
+
+  function resetOnly() {
+    show('screen-ready');
+    renderHistoryReady();
+  }
+
+  function renderHistory() {
+    const el  = document.getElementById('history-list');
+    const sec = document.getElementById('history-section-result');
+    if (!history.length) { sec.classList.remove('visible'); return; }
+    sec.classList.add('visible');
+    el.innerHTML = history.slice(0,8).map((h,i) => `
+      <div class="history-item">
+        <span class="h-num">#${i+1}</span>
+        <span class="h-adj">${fmt(h.adjusted)} s</span>
+        <span class="h-raw">raw ${fmt(h.raw)} s</span>
+      </div>`).join('');
+  }
+
+  function renderHistoryReady() {
+    const el  = document.getElementById('history-list-ready');
+    const sec = document.getElementById('history-section-ready');
+    if (!history.length) { sec.classList.remove('visible'); return; }
+    sec.classList.add('visible');
+    el.innerHTML = history.slice(0,5).map((h,i) => `
+      <div class="history-item">
+        <span class="h-num">#${i+1}</span>
+        <span class="h-adj">${fmt(h.adjusted)} s</span>
+        <span class="h-raw">raw ${fmt(h.raw)} s</span>
+      </div>`).join('');
+  }
+</script>
+</body>
+</html>

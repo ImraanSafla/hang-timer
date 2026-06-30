@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Hang Timer</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23111'/%3E%3Crect x='10' y='6' width='10' height='52' fill='%23fff'/%3E%3Crect x='44' y='6' width='10' height='52' fill='%23fff'/%3E%3Crect x='10' y='26' width='44' height='9' fill='%23fff'/%3E%3C/svg%3E">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -541,43 +542,34 @@
 
   function createFavicon() {
     const c = document.createElement('canvas');
-    c.width = c.height = 64;
+    c.width = c.height = 180;
     const ctx = c.getContext('2d');
 
     // Rounded square background
-    const r = 13;
+    const r = 36;
     ctx.beginPath();
-    ctx.moveTo(r, 0); ctx.lineTo(64 - r, 0);
-    ctx.arcTo(64, 0, 64, r, r);
-    ctx.lineTo(64, 64 - r);
-    ctx.arcTo(64, 64, 64 - r, 64, r);
-    ctx.lineTo(r, 64);
-    ctx.arcTo(0, 64, 0, 64 - r, r);
+    ctx.moveTo(r, 0); ctx.lineTo(180 - r, 0);
+    ctx.arcTo(180, 0, 180, r, r);
+    ctx.lineTo(180, 180 - r);
+    ctx.arcTo(180, 180, 180 - r, 180, r);
+    ctx.lineTo(r, 180);
+    ctx.arcTo(0, 180, 0, 180 - r, r);
     ctx.lineTo(0, r);
     ctx.arcTo(0, 0, r, 0, r);
     ctx.closePath();
     ctx.fillStyle = '#111111';
     ctx.fill();
 
-    // H shape — sharp corners, centered 44×52 within 64×64
+    // H shape scaled to 180×180
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(10, 6, 10, 52);   // left bar
-    ctx.fillRect(44, 6, 10, 52);   // right bar
-    ctx.fillRect(10, 26, 44, 9);   // crossbar, ~38% from top
+    ctx.fillRect(28, 17, 28, 146);   // left bar
+    ctx.fillRect(124, 17, 28, 146);  // right bar
+    ctx.fillRect(28, 73, 124, 25);   // crossbar
 
-    const dataURL = c.toDataURL('image/png');
-
-    // Standard favicon
-    let link = document.querySelector("link[rel='icon']") || document.createElement('link');
-    link.rel = 'icon';
-    link.type = 'image/png';
-    link.href = dataURL;
-    if (!link.parentNode) document.head.appendChild(link);
-
-    // Apple touch icon for Safari / iOS home screen
+    // Apple touch icon for iOS home screen
     let apple = document.querySelector("link[rel='apple-touch-icon']") || document.createElement('link');
     apple.rel = 'apple-touch-icon';
-    apple.href = dataURL;
+    apple.href = c.toDataURL('image/png');
     if (!apple.parentNode) document.head.appendChild(apple);
   }
 

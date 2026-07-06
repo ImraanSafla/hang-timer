@@ -542,7 +542,11 @@
 
   function fmtDate(d) {
     const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    return d.getDate() + ' ' + months[d.getMonth()];
+    let h = d.getHours();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12; if (h === 0) h = 12;
+    const mins = d.getMinutes().toString().padStart(2, '0');
+    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + h + ':' + mins + ampm;
   }
 
   function createFavicon() {

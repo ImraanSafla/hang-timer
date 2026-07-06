@@ -540,6 +540,11 @@
     return fmt(seconds) + ' s';
   }
 
+  function fmtDate(d) {
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return d.getDate() + ' ' + months[d.getMonth()];
+  }
+
   function createFavicon() {
     const c = document.createElement('canvas');
     c.width = c.height = 180;
@@ -635,7 +640,7 @@
   function saveAndReset() {
     const raw = rawMs / 1000;
     const r   = parseFloat(document.getElementById('reaction-input').value.trim()) || 0;
-    history.unshift({ raw, reaction: r, adjusted: Math.max(0, raw - r) });
+    history.unshift({ raw, reaction: r, adjusted: Math.max(0, raw - r), date: new Date() });
     renderHistory();
     resetOnly();
   }
@@ -654,7 +659,7 @@
       <div class="history-item">
         <span class="h-num">#${i+1}</span>
         <span class="h-adj">${fmtResult(h.adjusted)}</span>
-        <span class="h-raw">raw ${fmt(h.raw)} s</span>
+        <span class="h-raw">${fmtDate(h.date)}</span>
       </div>`).join('');
   }
 
@@ -667,7 +672,7 @@
       <div class="history-item">
         <span class="h-num">#${i+1}</span>
         <span class="h-adj">${fmtResult(h.adjusted)}</span>
-        <span class="h-raw">raw ${fmt(h.raw)} s</span>
+        <span class="h-raw">${fmtDate(h.date)}</span>
       </div>`).join('');
   }
 
